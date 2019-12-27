@@ -20,9 +20,9 @@ class OffsetHelper {
     return OffsetHelper(Offset(v3[0], v3[1]));
   }
 
-  OffsetHelper rotate(double euler_angle) {
-    var newX = dx * cos(euler_angle) - dy * sin(euler_angle);
-    var newY = dx * sin(euler_angle) + dy * cos(euler_angle);
+  OffsetHelper rotate(double eulerAngle) {
+    var newX = dx * cos(eulerAngle) - dy * sin(eulerAngle);
+    var newY = dx * sin(eulerAngle) + dy * cos(eulerAngle);
     return OffsetHelper(Offset(newX, newY));
   }
 
