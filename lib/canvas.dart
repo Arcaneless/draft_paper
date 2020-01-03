@@ -63,9 +63,9 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   double _scale = 1.0;
   double _realRotate = 0;
   double _rotate = 0;
-  Offset _initPoint;
-  Offset _translation = Offset(0, 0);
-  Offset _realTranslation = Offset(0, 0);
+  Offset _initPoint = Offset.zero;
+  Offset _translation = Offset.zero;
+  Offset _realTranslation = Offset.zero;
 
   // the matrices
   Matrix4 realMatrix = Matrix4.identity();
