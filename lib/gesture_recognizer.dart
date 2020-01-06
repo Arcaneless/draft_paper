@@ -19,6 +19,8 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
   double initScalingDistance = 0;
   double initAngle = 0;
 
+  Size size;
+
   CustomGestureRecognizer({
     this.onPanStart,
     this.onPanUpdate,
@@ -27,7 +29,8 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     this.onScalingUpdate,
     this.onScalingEnd,
     this.onRotatingUpdate,
-    this.onRotatingEnd
+    this.onRotatingEnd,
+    this.size
   }) {
     onStart = (Offset offset) {
       final touch = Touch(
@@ -44,12 +47,12 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     touches.add(touch);
     if (touches.length == 1) {
       // if the touch is a pan start
-      onPanStart(touch.startOffset);
+      onPanStart(touch.startOffset - Offset(size.width, size.height) / 2);
     } else if (touches.length == 2) {
       // if the touch is a two finger start
       initScalingDistance = (touches[0].currentOffset - touches[1].currentOffset).distance;
       // pass the middle point: aka the focal point
-      onScalingStart((touches[0].currentOffset + touches[1].currentOffset) / 2);
+      onScalingStart((touches[0].currentOffset + touches[1].currentOffset) / 2 - Offset(size.width, size.height) / 2);
 
       // find the init angle
       initAngle = (touches[0].currentOffset - touches[1].currentOffset).direction;
@@ -61,11 +64,11 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     touch.currentOffset = details.localPosition;
 
     if (touches.length == 1) {
-      onPanUpdate(touch.currentOffset);
+      onPanUpdate(touch.currentOffset - Offset(size.width, size.height) / 2);
     } else if (touches.length == 2) {
       // Scaling update
       var newDistance = (touches[0].currentOffset - touches[1].currentOffset).distance;
-      onScalingUpdate((touches[0].currentOffset + touches[1].currentOffset) / 2, newDistance / initScalingDistance);
+      onScalingUpdate((touches[0].currentOffset + touches[1].currentOffset) / 2 - Offset(size.width, size.height) / 2, newDistance / initScalingDistance);
 
       // Rotating check
       var newAngle = (touches[0].currentOffset - touches[1].currentOffset).direction;

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 import 'package:draft_paper/gesture_recognizer.dart';
 import 'package:draft_paper/offset_helper.dart';
@@ -12,10 +13,11 @@ class CanvasPoints {
   Offset points;
 }
 
-class CanvasPainter extends CustomPainter {
+class TransformablePainter extends CustomPainter {
 
-  CanvasPainter(this.points);
+  TransformablePainter(this.points, this.transformation);
   List<CanvasPoints> points;
+  Matrix4 transformation;
   List<Offset> offsets = List();
 
   final Paint rectPaint = Paint()
@@ -25,7 +27,9 @@ class CanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, rectPaint);
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.transform(transformation.storage);
+    canvas.drawRect(Offset(-size.width / 2, -size.height / 2) & size, rectPaint);
 
     for (int i=0; i<points.length-1; i++) {
       if (points[i] != null && points[i+1] != null) {
@@ -61,37 +65,37 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   // value to form the matrix
   double _realScale = 1.0;
   double _scale = 1.0;
-  double _realRotate = 0;
+  double _realRotate = 0.0;
   double _rotate = 0;
+  Offset _realTranslation = Offset.zero;
   Offset _initPoint;
-  Offset _translation = Offset(0, 0);
-  Offset _realTranslation = Offset(0, 0);
+  Offset _translation = Offset.zero;
 
   // the matrices
   Matrix4 realMatrix = Matrix4.identity();
   Matrix4 matrix = Matrix4.identity();
 
   void _addPoints(Offset offset) {
-    if (offset == null) {
-      points.add(null);
-      return;
-    }
-    // translating related to center, scale, then go back to left-top corner
-    offset = OffsetHelper(offset)
-          .translate(-MediaQuery.of(context).size.width / 2, -MediaQuery.of(context).size.height / 2)
-          .translate(-_realTranslation.dx, -_realTranslation.dy)
-          .rotate(-_realRotate)
-          .scale(1/_realScale, 1/_realScale)
-          .translate(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2)
-          .offset;
     setState(() {
+      offset = OffsetHelper(offset)
+                .rotate(-_realRotate)
+                .scale(1/_realScale, 1/_realScale)
+                .translate(-matrix.getTranslation().x, -matrix.getTranslation().y)
+                .offset;
+
       points.add(CanvasPoints(
           points: offset,
           paint: Paint()
             ..isAntiAlias = true
             ..color = Colors.black
-            ..strokeWidth = 1.0
+            ..strokeWidth = 0.2
       ));
+    });
+  }
+
+  void _endPoints(CanvasPoints offset) {
+    setState(() {
+      points.add(offset);
     });
   }
 
@@ -102,13 +106,20 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   void _scaleUpdate(Offset newFocalPoint, double scale) {
     _scale = scale;
     _translation = newFocalPoint - _initPoint;
+    _translation = OffsetHelper(_translation).rotate(-_realRotate).scale(-1/_realScale, -1/_realScale).offset;
+    //_realTranslation = newFocalPoint;
+    developer.log(_translation.toString());
     matrixUpdate();
   }
 
   void _scaleEnd(DragEndDetails details) {
     _realScale *= _scale;
-    if (_realScale < 1.0) {
+    _realTranslation += _translation;
+
+    if (_realScale < 0.5) {
       _realScale = _scale = 1.0;
+      _realRotate = _rotate = 0.0;
+      _realTranslation = _translation = Offset.zero;
       matrix = Matrix4.identity();
     }
     matrixEnd();
@@ -121,16 +132,15 @@ class _CanvasWidgetState extends State<CanvasWidget> {
 
   void _rotateEnd(DragEndDetails details) {
     _realRotate += _rotate;
-    _realTranslation += _translation;
     matrixEnd();
   }
 
   void matrixUpdate() {
     setState(() {
       matrix = realMatrix.clone()
+        ..translate(_translation.dx, _translation.dy)
         ..scale(_scale)
-        ..rotateZ(_rotate)
-        ..translate(_translation.dx, _translation.dy);
+        ..rotateZ(_rotate);
     });
   }
 
@@ -150,25 +160,33 @@ class _CanvasWidgetState extends State<CanvasWidget> {
               () => CustomGestureRecognizer(
                 onPanStart: _addPoints,
                 onPanUpdate: _addPoints,
-                onPanEnd: _addPoints,
+                onPanEnd: _endPoints,
                 onScalingStart: _scaleStart,
                 onScalingUpdate: _scaleUpdate,
                 onScalingEnd: _scaleEnd,
                 onRotatingUpdate: _rotateUpdate,
-                onRotatingEnd: _rotateEnd
+                onRotatingEnd: _rotateEnd,
+                size: MediaQuery.of(context).size
               ),
               (CustomGestureRecognizer instance) => {}
           )
         },
-        child: Transform(
-          origin: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
-          transform: matrix,
-          child: CustomPaint(
-            size: MediaQuery.of(context).size,
-            painter: CanvasPainter(points),
-          ),
+        child: CustomPaint(
+          size: MediaQuery.of(context).size,
+          painter: TransformablePainter(points, matrix),
         ),
       ),
     );
   }
 }
+
+//Container(
+//child: Transform(
+//origin: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
+//transform: matrix,
+//child: CustomPaint(
+//size: MediaQuery.of(context).size,
+//painter: CanvasPainter(points, matrix),
+//),
+//),
+//),
