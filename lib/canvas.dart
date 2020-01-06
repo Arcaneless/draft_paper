@@ -68,7 +68,7 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   double _realRotate = 0.0;
   double _rotate = 0;
   Offset _realTranslation = Offset.zero;
-  Offset _initPoint;
+  Offset _initPoint = Offset.zero;
   Offset _translation = Offset.zero;
 
   // the matrices
