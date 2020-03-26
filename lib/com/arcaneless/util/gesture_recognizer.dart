@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
@@ -7,6 +9,7 @@ import 'dart:developer' as developer;
 class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
 
   final List<Touch> touches = [];
+  bool lastTouchEnding = false;
   Function onPanStart; // the starting offset
   Function onPanUpdate; // current offset
   Function onPanEnd; // null
@@ -47,6 +50,7 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     touches.add(touch);
     if (touches.length == 1) {
       // if the touch is a pan start
+      if (lastTouchEnding) return;
       onPanStart(touch.startOffset - Offset(size.width, size.height) / 2);
     } else if (touches.length == 2) {
       // if the touch is a two finger start
@@ -64,6 +68,7 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     touch.currentOffset = details.localPosition;
 
     if (touches.length == 1) {
+      if (lastTouchEnding) return;
       onPanUpdate(touch.currentOffset - Offset(size.width, size.height) / 2);
     } else if (touches.length == 2) {
       // Scaling update
@@ -82,8 +87,10 @@ class CustomGestureRecognizer extends ImmediateMultiDragGestureRecognizer {
     if (touches.length == 0) {
       // end the panning gesture
       onPanEnd(null);
+      lastTouchEnding = false;
     } else if (touches.length == 1) {
       // end the scaling gesture
+      lastTouchEnding = true;
       onScalingEnd(details);
       onRotatingEnd(details);
     }

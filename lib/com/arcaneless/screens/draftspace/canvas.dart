@@ -1,8 +1,8 @@
 import 'dart:ui';
+import 'package:draft_paper/com/arcaneless/util/gesture_recognizer.dart';
+import 'package:draft_paper/com/arcaneless/util/offset_helper.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 
-import 'package:draft_paper/gesture_recognizer.dart';
-import 'package:draft_paper/offset_helper.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 
@@ -34,10 +34,6 @@ class TransformablePainter extends CustomPainter {
     for (int i=0; i<points.length-1; i++) {
       if (points[i] != null && points[i+1] != null) {
         canvas.drawLine(points[i].points, points[i+1].points, points[i].paint);
-      } else if (points[i] != null && points[i+1] == null) {
-        offsets.clear();
-        offsets.add(points[i].points);
-        canvas.drawPoints(PointMode.points, offsets, points[i].paint);
       }
     }
   }
@@ -78,9 +74,9 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   void _addPoints(Offset offset) {
     setState(() {
       offset = OffsetHelper(offset)
-                .rotate(-_realRotate)
-                .scale(1/_realScale, 1/_realScale)
                 .translate(-matrix.getTranslation().x, -matrix.getTranslation().y)
+                .scale(1/_realScale, 1/_realScale)
+                .rotate(-_realRotate)
                 .offset;
 
       points.add(CanvasPoints(
@@ -88,14 +84,14 @@ class _CanvasWidgetState extends State<CanvasWidget> {
           paint: Paint()
             ..isAntiAlias = true
             ..color = Colors.black
-            ..strokeWidth = 0.2
+            ..strokeWidth = 0.5 * 1/_realScale
       ));
     });
   }
 
   void _endPoints(CanvasPoints offset) {
     setState(() {
-      points.add(offset);
+      points.add(null);
     });
   }
 
@@ -103,10 +99,11 @@ class _CanvasWidgetState extends State<CanvasWidget> {
     _initPoint = focalPoint;
   }
 
+  // TODO: scale center fix
   void _scaleUpdate(Offset newFocalPoint, double scale) {
     _scale = scale;
     _translation = newFocalPoint - _initPoint;
-    _translation = OffsetHelper(_translation).rotate(-_realRotate).scale(-1/_realScale, -1/_realScale).offset;
+    _translation = OffsetHelper(_translation).rotate(-_realRotate).scale(1/_realScale, 1/_realScale).offset;
     //_realTranslation = newFocalPoint;
     developer.log(_translation.toString());
     matrixUpdate();
