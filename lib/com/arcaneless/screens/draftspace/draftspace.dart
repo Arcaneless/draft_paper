@@ -1,6 +1,8 @@
 import 'package:draft_paper/com/arcaneless/screens/draftspace/canvas.dart';
 import 'package:flutter/material.dart';
 
+
+GlobalKey<CanvasWidgetState> canvasKey = GlobalKey<CanvasWidgetState>();
 class DraftSpaceWidget extends StatefulWidget {
 
   @override
@@ -20,7 +22,7 @@ class _DraftSpaceWidgetState extends State<DraftSpaceWidget> {
               color: Colors.white
             ),
             onPressed: () {
-
+              canvasKey.currentState.undo();
             },
           ),
           IconButton(
@@ -29,7 +31,7 @@ class _DraftSpaceWidgetState extends State<DraftSpaceWidget> {
                 color: Colors.white
             ),
             onPressed: () {
-
+              canvasKey.currentState.redo();
             },
           ),
         ],

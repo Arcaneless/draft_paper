@@ -6,17 +6,29 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 
-class CanvasPoints {
-  CanvasPoints({this.paint, this.points});
+class CanvasPath {
+  CanvasPath({this.paint, this.path});
 
   Paint paint;
-  Offset points;
+  Path path;
+
+  void addPoint(Offset o) {
+    path.lineTo(o.dx, o.dy);
+  }
 }
 
+enum CanvasPaint {
+  HIGHTLIGHT,
+  PEN,
+  ERASER,
+}
+
+// default layer 50
 class TransformablePainter extends CustomPainter {
 
-  TransformablePainter(this.points, this.transformation);
-  List<CanvasPoints> points;
+  TransformablePainter(this.path, this.transformation);
+  List<CanvasPath> _undoList = List();
+  CanvasPath path;
   Matrix4 transformation;
   List<Offset> offsets = List();
 
@@ -31,11 +43,7 @@ class TransformablePainter extends CustomPainter {
     canvas.transform(transformation.storage);
     canvas.drawRect(Offset(-size.width / 2, -size.height / 2) & size, rectPaint);
 
-    for (int i=0; i<points.length-1; i++) {
-      if (points[i] != null && points[i+1] != null) {
-        canvas.drawLine(points[i].points, points[i+1].points, points[i].paint);
-      }
-    }
+    canvas.drawPath(path.path, path.paint);
   }
 
 
@@ -47,23 +55,25 @@ class TransformablePainter extends CustomPainter {
 }
 
 class CanvasWidget extends StatefulWidget {
-
+  CanvasWidget({Key key}) : super(key: key);
 
   @override
-  State createState() => _CanvasWidgetState();
+  State createState() => CanvasWidgetState();
 
 }
 
-class _CanvasWidgetState extends State<CanvasWidget> {
+class CanvasWidgetState extends State<CanvasWidget> {
 
-  List<CanvasPoints> points = List();
+  List<CanvasPath> points = List();
+  List<CanvasPath> _tempUndo = List();
+  List<List<CanvasPath>> _undoList = List();
+  List<List<CanvasPath>> _redoList = List();
 
   // value to form the matrix
   double _realScale = 1.0;
   double _scale = 1.0;
   double _realRotate = 0.0;
   double _rotate = 0;
-  Offset _realTranslation = Offset.zero;
   Offset _initPoint = Offset.zero;
   Offset _translation = Offset.zero;
 
@@ -74,24 +84,34 @@ class _CanvasWidgetState extends State<CanvasWidget> {
   void _addPoints(Offset offset) {
     setState(() {
       offset = OffsetHelper(offset)
-                .translate(-matrix.getTranslation().x, -matrix.getTranslation().y)
-                .scale(1/_realScale, 1/_realScale)
-                .rotate(-_realRotate)
-                .offset;
+          .translate(-matrix
+          .getTranslation()
+          .x, -matrix
+          .getTranslation()
+          .y)
+          .scale(1 / _realScale, 1 / _realScale)
+          .rotate(-_realRotate)
+          .offset;
 
-      points.add(CanvasPoints(
-          points: offset,
+      CanvasPath point = CanvasPath(
+          point: offset,
           paint: Paint()
             ..isAntiAlias = true
             ..color = Colors.black
-            ..strokeWidth = 0.5 * 1/_realScale
-      ));
+            ..strokeWidth = 0.5 * 1 / _realScale
+      );
+
+      points.add(point);
+      _tempUndo.add(point);
     });
   }
 
-  void _endPoints(CanvasPoints offset) {
+  void _endPoints(CanvasPath offset) {
     setState(() {
       points.add(null);
+      _tempUndo.add(null);
+      _undoList.add(_tempUndo);
+      _tempUndo.clear();
     });
   }
 
@@ -111,12 +131,10 @@ class _CanvasWidgetState extends State<CanvasWidget> {
 
   void _scaleEnd(DragEndDetails details) {
     _realScale *= _scale;
-    _realTranslation += _translation;
 
     if (_realScale < 0.5) {
       _realScale = _scale = 1.0;
       _realRotate = _rotate = 0.0;
-      _realTranslation = _translation = Offset.zero;
       matrix = Matrix4.identity();
     }
     matrixEnd();
@@ -145,6 +163,17 @@ class _CanvasWidgetState extends State<CanvasWidget> {
     setState(() {
       realMatrix = matrix;
     });
+  }
+
+  // undoing the paint
+  void undo() {
+    _tempUndo.clear();
+    _tempUndo = _undoList.removeLast();
+  }
+
+  // redoing the paint as long as there is no drawing
+  void redo() {
+
   }
 
 
@@ -176,14 +205,3 @@ class _CanvasWidgetState extends State<CanvasWidget> {
     );
   }
 }
-
-//Container(
-//child: Transform(
-//origin: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
-//transform: matrix,
-//child: CustomPaint(
-//size: MediaQuery.of(context).size,
-//painter: CanvasPainter(points, matrix),
-//),
-//),
-//),
