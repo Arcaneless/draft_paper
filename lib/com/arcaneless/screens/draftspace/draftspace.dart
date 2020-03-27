@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 
 GlobalKey<CanvasWidgetState> canvasKey = GlobalKey<CanvasWidgetState>();
+final appbarSize = 50.0;
 class DraftSpaceWidget extends StatefulWidget {
 
   @override
@@ -14,29 +15,32 @@ class _DraftSpaceWidgetState extends State<DraftSpaceWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(
-              Icons.undo,
-              color: Colors.white
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(appbarSize),
+        child: AppBar(
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(
+                  Icons.undo,
+                  color: Colors.white
+              ),
+              onPressed: () {
+                canvasKey.currentState.undo();
+              },
             ),
-            onPressed: () {
-              canvasKey.currentState.undo();
-            },
-          ),
-          IconButton(
-            icon: Icon(
-                Icons.redo,
-                color: Colors.white
+            IconButton(
+              icon: Icon(
+                  Icons.redo,
+                  color: Colors.white
+              ),
+              onPressed: () {
+                canvasKey.currentState.redo();
+              },
             ),
-            onPressed: () {
-              canvasKey.currentState.redo();
-            },
-          ),
-        ],
+          ],
+        ),
       ),
-      body: CanvasWidget(),
+      body: CanvasWidget(key: canvasKey,)
     );
   }
 }

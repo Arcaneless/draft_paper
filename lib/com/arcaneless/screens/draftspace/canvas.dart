@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:draft_paper/com/arcaneless/screens/draftspace/draftspace.dart';
 import 'package:draft_paper/com/arcaneless/util/gesture_recognizer.dart';
 import 'package:draft_paper/com/arcaneless/util/offset_helper.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
@@ -26,9 +27,9 @@ enum CanvasPaint {
 // default layer 50
 class TransformablePainter extends CustomPainter {
 
-  TransformablePainter(this.paths, this.transformation);
-  List<CanvasPath> paths;
-  Matrix4 transformation;
+  TransformablePainter(this._paths, this._transformation);
+  List<CanvasPath> _paths;
+  Matrix4 _transformation;
   List<Offset> offsets = List();
 
   final Paint rectPaint = Paint()
@@ -39,11 +40,11 @@ class TransformablePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.translate(size.width / 2, size.height / 2);
-    canvas.transform(transformation.storage);
+    canvas.transform(_transformation.storage);
     canvas.drawRect(Offset(-size.width / 2, -size.height / 2) & size, rectPaint);
 
-    for (var i=0; i<paths.length; i++) {
-      canvas.drawPath(paths[i].path, paths[i].paint);
+    for (var i=0; i<_paths.length; i++) {
+      canvas.drawPath(_paths[i].path, _paths[i].paint);
     }
 
   }
@@ -67,8 +68,7 @@ class CanvasWidget extends StatefulWidget {
 class CanvasWidgetState extends State<CanvasWidget> {
 
   List<CanvasPath> _graph = List();
-  CanvasPath _currentPath;
-  List<CanvasPath> _undoList = List();
+  int _recordGraphLength = 0;
   List<CanvasPath> _redoList = List();
 
   // value to form the matrix
@@ -98,7 +98,7 @@ class CanvasWidgetState extends State<CanvasWidget> {
         paint: Paint()
         ..isAntiAlias = true
         ..color = Colors.black
-        ..strokeWidth = 0.1 * 1 / _realScale
+        ..style = PaintingStyle.stroke
       ));
     });
   }
@@ -120,9 +120,7 @@ class CanvasWidgetState extends State<CanvasWidget> {
   }
 
   void _endPoints(CanvasPath offset) {
-    setState(() {
-      _undoList.add(_graph.last);
-    });
+
   }
 
   void _scaleStart(Offset focalPoint) {
@@ -176,40 +174,48 @@ class CanvasWidgetState extends State<CanvasWidget> {
   }
 
   // undoing the paint
-  void undo() {
-    CanvasPath p = _undoList.removeLast();
-    _graph.add(p);
-    _redoList.add(p);
+  bool undo() {
+    if (_graph.length == 0) return false;
+    setState(() {
+      _redoList.add(_graph.removeLast());
+      _recordGraphLength = _graph.length;
+    });
+    return true;
   }
 
   // redoing the paint as long as there is no drawing
-  void redo() {
-
+  bool redo() {
+    if (_recordGraphLength < _graph.length || _redoList.length == 0) return false;
+    setState(() {
+      _graph.add(_redoList.removeLast());
+      _recordGraphLength = _graph.length;
+    });
   }
 
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size + Offset(0, appbarSize);
     return Scaffold(
       body: RawGestureDetector(
         gestures: <Type, GestureRecognizerFactory>{
           CustomGestureRecognizer : GestureRecognizerFactoryWithHandlers<CustomGestureRecognizer>(
-              () => CustomGestureRecognizer(
-                onPanStart: _createPoints,
-                onPanUpdate: _addPoints,
-                onPanEnd: _endPoints,
-                onScalingStart: _scaleStart,
-                onScalingUpdate: _scaleUpdate,
-                onScalingEnd: _scaleEnd,
-                onRotatingUpdate: _rotateUpdate,
-                onRotatingEnd: _rotateEnd,
-                size: MediaQuery.of(context).size
+                  () => CustomGestureRecognizer(
+                  onPanStart: _createPoints,
+                  onPanUpdate: _addPoints,
+                  onPanEnd: _endPoints,
+                  onScalingStart: _scaleStart,
+                  onScalingUpdate: _scaleUpdate,
+                  onScalingEnd: _scaleEnd,
+                  onRotatingUpdate: _rotateUpdate,
+                  onRotatingEnd: _rotateEnd,
+                  size: size
               ),
-              (CustomGestureRecognizer instance) => {}
+                  (CustomGestureRecognizer instance) => {}
           )
         },
         child: CustomPaint(
-          size: MediaQuery.of(context).size,
+          size: size,
           painter: TransformablePainter(_graph, matrix),
         ),
       ),

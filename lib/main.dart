@@ -1,3 +1,4 @@
+import 'package:draft_paper/com/arcaneless/screens/draftspace/canvas.dart';
 import 'package:draft_paper/com/arcaneless/screens/draftspace/draftspace.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
