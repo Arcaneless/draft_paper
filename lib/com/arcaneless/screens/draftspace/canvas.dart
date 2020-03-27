@@ -26,9 +26,8 @@ enum CanvasPaint {
 // default layer 50
 class TransformablePainter extends CustomPainter {
 
-  TransformablePainter(this.path, this.transformation);
-  List<CanvasPath> _undoList = List();
-  CanvasPath path;
+  TransformablePainter(this.paths, this.transformation);
+  List<CanvasPath> paths;
   Matrix4 transformation;
   List<Offset> offsets = List();
 
@@ -43,7 +42,10 @@ class TransformablePainter extends CustomPainter {
     canvas.transform(transformation.storage);
     canvas.drawRect(Offset(-size.width / 2, -size.height / 2) & size, rectPaint);
 
-    canvas.drawPath(path.path, path.paint);
+    for (var i=0; i<paths.length; i++) {
+      canvas.drawPath(paths[i].path, paths[i].paint);
+    }
+
   }
 
 
@@ -64,10 +66,10 @@ class CanvasWidget extends StatefulWidget {
 
 class CanvasWidgetState extends State<CanvasWidget> {
 
-  List<CanvasPath> points = List();
-  List<CanvasPath> _tempUndo = List();
-  List<List<CanvasPath>> _undoList = List();
-  List<List<CanvasPath>> _redoList = List();
+  List<CanvasPath> _graph = List();
+  CanvasPath _currentPath;
+  List<CanvasPath> _undoList = List();
+  List<CanvasPath> _redoList = List();
 
   // value to form the matrix
   double _realScale = 1.0;
@@ -80,38 +82,46 @@ class CanvasWidgetState extends State<CanvasWidget> {
   // the matrices
   Matrix4 realMatrix = Matrix4.identity();
   Matrix4 matrix = Matrix4.identity();
+  
+  void _createPoints(Offset offset) {
+    developer.log("create point");
+    offset = OffsetHelper(offset)
+        .translate(
+        -matrix.getTranslation().x,
+        -matrix.getTranslation().y)
+        .scale(1 / _realScale, 1 / _realScale)
+        .rotate(-_realRotate)
+        .offset;
+    setState(() {
+      _graph.add(CanvasPath(
+        path:  Path()..moveTo(offset.dx, offset.dy),
+        paint: Paint()
+        ..isAntiAlias = true
+        ..color = Colors.black
+        ..strokeWidth = 0.1 * 1 / _realScale
+      ));
+    });
+  }
 
   void _addPoints(Offset offset) {
     setState(() {
       offset = OffsetHelper(offset)
-          .translate(-matrix
-          .getTranslation()
-          .x, -matrix
-          .getTranslation()
-          .y)
+          .translate(
+          -matrix.getTranslation().x,
+          -matrix.getTranslation().y)
           .scale(1 / _realScale, 1 / _realScale)
           .rotate(-_realRotate)
           .offset;
 
-      CanvasPath point = CanvasPath(
-          point: offset,
-          paint: Paint()
-            ..isAntiAlias = true
-            ..color = Colors.black
-            ..strokeWidth = 0.5 * 1 / _realScale
-      );
-
-      points.add(point);
-      _tempUndo.add(point);
+      if (_graph.length > 0) {
+        _graph.last.addPoint(offset);
+      }
     });
   }
 
   void _endPoints(CanvasPath offset) {
     setState(() {
-      points.add(null);
-      _tempUndo.add(null);
-      _undoList.add(_tempUndo);
-      _tempUndo.clear();
+      _undoList.add(_graph.last);
     });
   }
 
@@ -167,8 +177,9 @@ class CanvasWidgetState extends State<CanvasWidget> {
 
   // undoing the paint
   void undo() {
-    _tempUndo.clear();
-    _tempUndo = _undoList.removeLast();
+    CanvasPath p = _undoList.removeLast();
+    _graph.add(p);
+    _redoList.add(p);
   }
 
   // redoing the paint as long as there is no drawing
@@ -184,7 +195,7 @@ class CanvasWidgetState extends State<CanvasWidget> {
         gestures: <Type, GestureRecognizerFactory>{
           CustomGestureRecognizer : GestureRecognizerFactoryWithHandlers<CustomGestureRecognizer>(
               () => CustomGestureRecognizer(
-                onPanStart: _addPoints,
+                onPanStart: _createPoints,
                 onPanUpdate: _addPoints,
                 onPanEnd: _endPoints,
                 onScalingStart: _scaleStart,
@@ -199,7 +210,7 @@ class CanvasWidgetState extends State<CanvasWidget> {
         },
         child: CustomPaint(
           size: MediaQuery.of(context).size,
-          painter: TransformablePainter(points, matrix),
+          painter: TransformablePainter(_graph, matrix),
         ),
       ),
     );
