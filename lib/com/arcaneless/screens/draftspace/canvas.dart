@@ -7,6 +7,8 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 
+import '../../parameter.dart';
+
 class CanvasPath {
   CanvasPath({this.paint, this.path});
 
@@ -190,6 +192,7 @@ class CanvasWidgetState extends State<CanvasWidget> {
       _graph.add(_redoList.removeLast());
       _recordGraphLength = _graph.length;
     });
+    return true;
   }
 
 

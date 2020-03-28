@@ -1,0 +1,1 @@
+final appbarSize = 50.0;
